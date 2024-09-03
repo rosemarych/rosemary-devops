@@ -1,0 +1,41 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - group-two
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    environment: aws
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set AWS credentials
+      run: |
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: eu-west-2
+
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.8.5
+
+    - name: Initialize Terraform
+      run: terraform init
+      env:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    - name: Plan Terraform changes
+      run: terraform plan -out=tfplan
+
+    # Add a prompt to ask the user whether to apply or destroy changes
+    - name: Apply Terraform changes
+      run: terraform apply --auto-approve
