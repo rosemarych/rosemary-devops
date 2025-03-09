@@ -1,0 +1,97 @@
+version: '3.9'
+
+services:
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+      - "./rules.yml:/etc/prometheus/rules.yml"
+    networks:
+      - opensis_network
+    ports:
+      - '9090:9090'
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    networks:
+      - opensis_network
+    ports:
+      - '9100:9100'
+
+  alert-manager:
+    image: prom/alertmanager
+    container_name: alert-manager
+    volumes:
+      - "./alertmanager.yml:/alertmanager/alertmanager.yml"
+    networks:
+      - opensis_network
+    ports:
+      - '9093:9093'
+
+  grafana_postgres:
+    container_name: grafana_postgres
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: grafana_db
+      POSTGRES_USER: grafana_usr
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - postgres-storage:/var/lib/postgresql/data
+    networks:
+      - opensis_network
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: grafana_postgres
+      GF_DATABASE_NAME: grafana_db
+      GF_DATABASE_USER: grafana_usr
+      GF_DATABASE_PASSWORD: admin
+    ports:
+      - '3000:3000'
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - opensis_network
+
+  database:
+    image: mariadb:10.5
+    container_name: database
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: abc123
+      MYSQL_DATABASE: openSIS
+      MYSQL_USER: openSIS_rw
+      MYSQL_PASSWORD: 'Op3nS!S'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./openSIS-Classic/MYSQL/mysql-init:/docker-entrypoint-initdb.d
+      - ./openSIS-Classic/MYSQL/mysql-config/strict_mode.cnf:/etc/mysql/conf.d/strict_mode.cnf
+    networks:
+      - opensis_network
+
+  frontend:
+    image: opensis-ui
+    container_name: frontend
+    ports:
+      - '8585:80'
+      - '80:80'
+    depends_on:
+      - database
+    networks:
+      - opensis_network
+
+networks:
+  opensis_network:
+
+volumes:
+  db_data:
+  openSIS:
+  grafana-storage: {}
+  postgres-storage: {}
